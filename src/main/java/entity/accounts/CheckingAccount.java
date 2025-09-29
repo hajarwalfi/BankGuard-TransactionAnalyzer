@@ -5,8 +5,7 @@ public final class CheckingAccount extends Account {
 
     public CheckingAccount(Long id, String number, double balance, Long clientId, double overdraft) {
         super(id, number, balance, clientId, "CHECKING");
-        this.overdraft = overdraft;
-    }
+        this.overdraft = overdraft;}
 
     public CheckingAccount(String number, double balance, Long clientId, double overdraft) {
         this(null, number, balance, clientId, overdraft);
