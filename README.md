@@ -4,7 +4,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17-orange?style=for-the-badge&logo=java)
 ![JDBC](https://img.shields.io/badge/JDBC-Enabled-blue?style=for-the-badge)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-336791?style=for-the-badge&logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 **Application Java d'analyse intelligente des transactions bancaires avec détection automatique d'anomalies**
@@ -52,15 +52,17 @@ Dans un environnement bancaire moderne, des milliers de transactions sont effect
 - Vue d'ensemble des soldes et comptes associés
 
 ### 💳 Gestion des Comptes
-- Support de multiples types de comptes (Courant, Épargne)
+- Support de multiples types de comptes (Checking, Savings)
 - Gestion du découvert autorisé et des taux d'intérêt
 - Recherche et tri des comptes par divers critères
+- Architecture sealed class pour une hiérarchie type-safe
 
 ### 💸 Analyse des Transactions
-- Enregistrement de toutes les opérations (Versement, Retrait, Virement)
+- Enregistrement de toutes les opérations (DEPOSIT, WITHDRAWAL, TRANSFER)
 - Filtrage intelligent par montant, type, date et lieu
-- Regroupement et agrégation des données
+- Regroupement et agrégation des données avec Stream API
 - Calcul automatique des moyennes et totaux
+- Suivi des localisations géographiques
 
 ### 🚨 Détection d'Anomalies
 - **Transactions à montant élevé** : Détection automatique au-delà d'un seuil configurable
@@ -72,7 +74,9 @@ Dans un environnement bancaire moderne, des milliers de transactions sont effect
 - Top 5 des clients par solde total
 - Rapports mensuels avec ventilation par type de transaction
 - Analyse des volumes et tendances
-- Export des données (CSV/JSON)
+- Détection des comptes inactifs
+- Statistiques globales du système
+- Interface console interactive avec formatage
 
 ---
 
@@ -88,25 +92,25 @@ BankGuard suit une **architecture en couches** respectant les principes SOLID :
                   ↓
 ┌─────────────────────────────────────┐
 │      Couche Services (Métier)       │
-│  ClientService | CompteService      │
-│  TransactionService | RapportService│
+│  ClientService | AccountService     │
+│  TransactionService | ReportService │
 └─────────────────────────────────────┘
                   ↓
 ┌─────────────────────────────────────┐
 │         Couche DAO (Accès Data)     │
-│    ClientDAO | CompteDAO            │
+│    ClientDAO | AccountDAO           │
 │    TransactionDAO                   │
 └─────────────────────────────────────┘
                   ↓
 ┌─────────────────────────────────────┐
 │      Couche Entity (Modèle)         │
-│  Client | Compte | Transaction      │
+│  Client | Account | Transaction     │
 │  (Records & Sealed Classes)         │
 └─────────────────────────────────────┘
                   ↓
 ┌─────────────────────────────────────┐
 │      Base de Données (JDBC)         │
-│      MySQL / PostgreSQL             │
+│           PostgreSQL                │
 └─────────────────────────────────────┘
 ```
 
@@ -125,7 +129,7 @@ BankGuard suit une **architecture en couches** respectant les principes SOLID :
 |------------|---------|-------|
 | **Java** | 17 | Langage principal avec Records, Sealed Classes, Pattern Matching |
 | **JDBC** | 4.0+ | Persistance et accès aux données |
-| **MySQL** | 8.0+ | Base de données relationnelle |
+| **PostgreSQL** | 13+ | Base de données relationnelle |
 | **Stream API** | Java 17 | Programmation fonctionnelle et traitement de données |
 | **Git** | 2.x | Gestion de versions |
 
@@ -148,9 +152,9 @@ Avant de commencer, assurez-vous d'avoir installé :
   java -version
   ```
 
-- **MySQL 8.0+** ou **PostgreSQL 13+**
+- **PostgreSQL 13+**
   ```bash
-  mysql --version
+  psql --version
   ```
 
 - **Git** pour le clonage du projet
@@ -167,30 +171,31 @@ Avant de commencer, assurez-vous d'avoir installé :
 ### 1. Cloner le repository
 
 ```bash
-git clone https://github.com/votre-username/bankguard-transaction-analyzer.git
-cd bankguard-transaction-analyzer
+git clone https://github.com/votre-username/BankGuard-TransactionAnalyzer.git
+cd BankGuard-TransactionAnalyzer
 ```
 
 ### 2. Créer la base de données
 
 ```sql
-CREATE DATABASE bankguard_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE bankguard_db;
+CREATE DATABASE bankguard_db;
 
--- Les tables seront créées automatiquement au premier lancement
--- Ou exécutez le script : source database/schema.sql
+-- Exécutez le script de création des tables :
+\i sql/script.sql
 ```
 
 ### 3. Compiler le projet
 
 ```bash
-javac -d out src/**/*.java
+# Compiler avec les dépendances PostgreSQL
+javac -cp "lib/postgresql-42.7.8.jar" -d target/classes src/main/java/**/*.java
 ```
 
-### 4. Créer le JAR exécutable
+### 4. Exécuter l'application
 
 ```bash
-jar cvfe BankGuard.jar com.bankguard.Main -C out .
+# Avec Java et le classpath correct
+java -cp "target/classes:lib/postgresql-42.7.8.jar" ui.Main
 ```
 
 ---
@@ -201,19 +206,11 @@ Créez un fichier `config.properties` à la racine du projet :
 
 ```properties
 # Configuration Base de Données
-db.url=jdbc:mysql://localhost:3306/bankguard_db
+db.url=jdbc:postgresql://localhost:5432/bankguard_db
 db.username=votre_username
 db.password=votre_password
-db.driver=com.mysql.cj.jdbc.Driver
+db.driver=org.postgresql.Driver
 
-# Configuration Anomalies
-anomaly.threshold.amount=10000.0
-anomaly.threshold.frequency=5
-anomaly.threshold.timeframe=60
-
-# Configuration Rapports
-report.export.path=./reports
-report.format=CSV
 ```
 
 > ⚠️ **Important** : Ne commitez jamais vos identifiants réels ! Utilisez `.env` ou `config.properties` (déjà dans .gitignore)
@@ -225,24 +222,18 @@ report.format=CSV
 ### Lancer l'application
 
 ```bash
-java -jar BankGuard.jar
+java -cp "target/classes:lib/postgresql-42.7.8.jar" ui.Main
 ```
 
 ### Menu principal
 
 ```
-╔════════════════════════════════════════════════╗
-║       🏦 BANKGUARD TRANSACTION ANALYZER       ║
-╠════════════════════════════════════════════════╣
-║  1. 👤 Gestion des Clients                     ║
-║  2. 💳 Gestion des Comptes                     ║
-║  3. 💸 Enregistrer une Transaction             ║
-║  4. 📊 Consulter l'Historique                  ║
-║  5. 📈 Analyses et Rapports                    ║
-║  6. 🚨 Détection d'Anomalies                   ║
-║  7. ⚙️  Paramètres                             ║
-║  0. 🚪 Quitter                                 ║
-╚════════════════════════════════════════════════╝
+=== BankGuard Transaction Analyzer ===
+1. Gestion des Clients
+2. Gestion des Comptes
+3. Gestion des Transactions
+4. Rapports et Analyses
+0. Quitter
 ```
 
 ### Exemples d'utilisation
@@ -250,96 +241,112 @@ java -jar BankGuard.jar
 #### Créer un client et un compte
 ```
 > 1 (Gestion des Clients)
-> 1 (Nouveau Client)
+> 1 (Créer un client)
 > Nom : Jean Dupont
 > Email : jean.dupont@email.com
 ✓ Client créé avec succès (ID: 1)
 
 > 2 (Gestion des Comptes)
-> 1 (Nouveau Compte)
-> Type : Compte Courant
-> Découvert autorisé : 500.00 €
-✓ Compte créé : FR76 XXXX XXXX XXXX
+> 1 (Créer un compte)
+> ID Client : 1
+> Type de compte : CHECKING
+> Solde initial : 1000.00
+> Découvert autorisé : 500.00
+✓ Compte créé avec succès
 ```
 
 #### Enregistrer une transaction
 ```
-> 3 (Enregistrer Transaction)
-> Numéro de compte : FR76XXXXXXXXXXXXXXXX
-> Type : VERSEMENT
-> Montant : 1500.00 €
-> Lieu : Paris, France
+> 3 (Gestion des Transactions)
+> 1 (Créer une transaction)
+> ID du compte : 1
+> Type de transaction : DEPOSIT
+> Montant : 1500.00
+> Localisation : Paris, France
 ✓ Transaction enregistrée avec succès
 ```
 
-#### Détecter les anomalies
+#### Analyser les transactions et détecter les anomalies
 ```
-> 6 (Détection d'Anomalies)
-> Analyse en cours...
+> 4 (Rapports et Analyses)
+> 4 (Transactions suspectes)
 
-⚠️ ALERTES DÉTECTÉES :
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 Transaction suspecte (Montant élevé)
-   Compte : FR76XXXXXXXXXXXXXXXX
-   Montant : 25,000.00 €
-   Date : 2025-09-27 14:32:18
-   
-🚨 Localisation inhabituelle
-   Client : Marie Martin
-   Lieu : Tokyo, Japan (habituel : Paris, France)
+=== TRANSACTIONS SUSPECTES DÉTECTÉES ===
+Transactions à montant élevé (> 10000.0) :
+- Transaction ID 15 : 25000.0 (2025-09-29)
+- Transaction ID 23 : 15500.0 (2025-09-28)
+
+Transactions avec localisation inhabituelle :
+- Transaction ID 18 : Tokyo, Japan (Client habituel : Paris)
+- Transaction ID 31 : New York, USA (Client habituel : Lyon)
+
+> 5 (Comptes inactifs)
+Comptes sans activité depuis plus de 30 jours :
+- Compte ID 7 : Dernière transaction il y a 45 jours
 ```
 
 ---
 
+## 📊 Diagramme de Classes UML
+
+Le diagramme de classes ci-dessous illustre l'architecture complète du système BankGuard Transaction Analyzer, montrant les relations entre toutes les entités, services, et couches d'accès aux données.
+
+![UML Class Diagram](uml/ClassDiagram.png)
+
+
+
+
 ## 📂 Structure du projet
 
 ```
-bankguard-transaction-analyzer/
+BankGuard-TransactionAnalyzer/
 │
-├── 📁 src/
-│   └── com/bankguard/
-│       ├── 📁 entity/              # Modèles de données
-│       │   ├── Client.java         # Record
-│       │   ├── Compte.java         # Sealed class
-│       │   ├── CompteCourant.java
-│       │   ├── CompteEpargne.java
-│       │   └── Transaction.java    # Record
-│       │
-│       ├── 📁 dao/                 # Accès aux données
-│       │   ├── ClientDAO.java
-│       │   ├── CompteDAO.java
-│       │   └── TransactionDAO.java
-│       │
-│       ├── 📁 service/             # Logique métier
-│       │   ├── ClientService.java
-│       │   ├── CompteService.java
-│       │   ├── TransactionService.java
-│       │   └── RapportService.java
-│       │
-│       ├── 📁 ui/                  # Interface utilisateur
-│       │   └── ConsoleMenu.java
-│       │
-│       ├── 📁 util/                # Utilitaires
-│       │   ├── DatabaseUtil.java
-│       │   ├── DateUtil.java
-│       │   └── ValidationUtil.java
-│       │
-│       └── Main.java               # Point d'entrée
+├── 📁 src/main/java/
+│   ├── 📁 entity/                  # Modèles de données (Records & Sealed Classes)
+│   │   ├── 📁 client/
+│   │   │   └── Client.java         # Record
+│   │   ├── 📁 accounts/
+│   │   │   ├── Account.java        # Sealed abstract class
+│   │   │   ├── CheckingAccount.java
+│   │   │   └── SavingsAccount.java
+│   │   └── 📁 transactions/
+│   │       └── Transaction.java    # Record
+│   │
+│   ├── 📁 dao/                     # Accès aux données
+│   │   ├── ClientDAO.java
+│   │   ├── AccountDAO.java
+│   │   └── TransactionDAO.java
+│   │
+│   ├── 📁 service/                 # Logique métier
+│   │   ├── ClientService.java
+│   │   ├── AccountService.java
+│   │   ├── TransactionService.java
+│   │   └── ReportService.java
+│   │
+│   ├── 📁 ui/                      # Interface utilisateur
+│   │   ├── Main.java               # Point d'entrée
+│   │   └── Menu.java               # Menu console interactif
+│   │
+│   ├── 📁 util/                    # Utilitaires
+│   │   ├── DatabaseConnection.java # Singleton de connexion
+│   │   ├── DateUtil.java
+│   │   └── ValidationUtil.java
+│   │
+│   └── 📁 enums/
+│       └── TransactionType.java    # DEPOSIT, WITHDRAWAL, TRANSFER
 │
-├── 📁 database/
-│   ├── schema.sql                  # Structure de la BDD
-│   └── data.sql                    # Données de test
+├── 📁 sql/
+│   └── script.sql                  # Structure complète de la BDD
 │
-├── 📁 docs/
-│   ├── class-diagram.png           # Diagramme de classes
-│   └── architecture.md             # Documentation technique
+├── 📁 uml/                         # Diagrammes UML
 │
-├── 📁 reports/                     # Rapports générés
+├── 📁 target/                      # Fichiers compilés (Maven/Gradle)
 │
 ├── .gitignore
 ├── README.md
 ├── LICENSE
-└── config.properties.example       # Template de configuration
+├── db.properties                   # Configuration BDD
+└── db.properties.example           # Template de configuration
 ```
 
 ---
